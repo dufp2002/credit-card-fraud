@@ -1,4 +1,5 @@
-# PythonProject-Template
+# credit-card-fraud
+
 
 [![Star on GitHub](https://img.shields.io/github/stars/JeremieGince/PythonProject-Template.svg?style=social)](https://github.com/JeremieGince/PythonProject-Template/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/JeremieGince/PythonProject-Template?style=social)](https://github.com/JeremieGince/PythonProject-Template/network/members)

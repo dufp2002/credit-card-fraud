@@ -1,8 +1,8 @@
 [project]
-name = "python_template"
+name = "credit-card-fraud"
 version = "0.0.1"
 description = ""
-authors = [{ name = "Jeremie Gince", email = "gincejeremie@gmail.com" }]
+authors = [{name = "Pierre-Alexandre Dufrene", email = "pierre-alexandre.dufrene@usherbrooke.ca"},]
 requires-python = ">=3.10,<4"
 license = { file = "LICENSE" }
 classifiers = [
@@ -21,6 +21,7 @@ dependencies = [
     "pythonbasictools>=0.0.3",
     "psutil>=5.9.6",
     "importlib-metadata (>=8.7.0,<9.0.0)",
+    "ipykernel>=6.29.5",
 ]
 dynamic = ["readme"]
 

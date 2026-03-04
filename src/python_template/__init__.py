@@ -4,12 +4,12 @@ Project description.
 
 import importlib_metadata
 
-__author__ = "Jeremie Gince"
-__email__ = "gincejeremie@gmail.com"
-__copyright__ = "Copyright 2025, Jeremie Gince"
+__author__ = "Pierre-Alexandre Dufrene"
+__email__ = "pierre-alexandre.dufrene@usherbrooke.ca"
+__copyright__ = "Copyright 2026, Pierre-Alexandre Dufrene"
 __license__ = "Apache 2.0"
-__url__ = "https://github.com/JeremieGince/PythonProject-Template"
-__package__ = "python_template"
+__url__ = "https://github.com/dufp2002/credit-card-fraud"
+__package__ = "credit-card-fraud"
 __version__ = importlib_metadata.version(__package__)
 
 import warnings
