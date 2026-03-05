@@ -34,11 +34,16 @@ def load_to_df(path: str) -> pd.DataFrame:
 
 def drop_rows_with_nulls(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Remove rows that contain at least one null value.
+    Remove rows that contain null values outside of the Class column.
+    Nulls in Class are kept, they could be usefull for unsupervised learning.
+    The rest won't be useful unless the dataset contains many nulls.
     Prints pass percentage only when it is below 100%.
     """
     total_rows = len(df)
-    cleaned_df = df.dropna()
+    non_class_cols = [
+        col for col in df.columns if not (isinstance(col, str) and col.lower() == "class")
+    ]
+    cleaned_df = df.dropna(subset=non_class_cols) if non_class_cols else df.copy()
 
     if total_rows == 0:
         print('Empty dataframe')
@@ -149,7 +154,7 @@ def save_df(df: pd.DataFrame, path: str) -> None:
         )
 
 
-def raw_data_to_gold(path: str) -> None:
+def raw_data_to_silver(path: str) -> None:
     """
     Uses remove_extra_columns first since to remove it first tries to
     rename columns.
@@ -159,11 +164,12 @@ def raw_data_to_gold(path: str) -> None:
     df = cast_time_to_Int(df)
     df = cast_v_columns_to_Float32(df)
     df = change_class_to_bool(df)
+    df = drop_rows_with_nulls(df)
     source_path = Path(path)
-    output_path = source_path.with_name(f"{source_path.stem}_gold{source_path.suffix}")
+    output_path = source_path.with_name(f"{source_path.stem}_silver{source_path.suffix}")
     save_df(df, output_path)
 
 
 if __name__ == "__main__":
     path = 'archive/data/creditcard_csv.csv'
-    raw_data_to_gold(path)
+    raw_data_to_silver(path)

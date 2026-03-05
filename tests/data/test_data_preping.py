@@ -17,7 +17,7 @@ def test_create_dummy_dataset_contains_expected_issues():
 
 
 def test_drop_rows_with_nulls_removes_rows_and_prints_percentage(capsys):
-    df = pd.DataFrame({"A": [1, None], "B": [1, 2]})
+    df = pd.DataFrame({"A": [1, None], "B": [1, 2], "Class": [None, None]})
     cleaned = drop_rows_with_nulls(df)
     out = capsys.readouterr().out
 
@@ -79,15 +79,15 @@ def test_save_df_writes_file():
 
 def test_raw_data_to_gold_writes_file():
     fixed_name = "archive/data/dummy_dataset.csv"
-    raw_data_to_gold(fixed_name)
-    fixed_name = "archive/data/dummy_dataset_gold.csv"
-    df_gold = load_to_df(fixed_name)
+    raw_data_to_silver(fixed_name)
+    fixed_name = "archive/data/dummy_dataset_silver.csv"
+    df_silver = load_to_df(fixed_name)
     df = pd.DataFrame({
-    "Time": [0, 100, 175001, np.nan, 250],
-    "V1": [0.1, -1.5, 2.3, 0.0, np.nan],
-    "V2": [np.nan, 0.5, np.nan, -0.7, 2.0],
-    "V4": [np.nan, 0.5, np.nan, -0.7, 2.0],
-    "Amount": [10.5, 20.0, 5.2, np.nan, 99.9],
-    "Class": [False, True, np.nan, True, False],
+    "Time": [100],
+    "V1": [-1.5],
+    "V2": [0.5],
+    "V4": [0.5],
+    "Amount": [20.0],
+    "Class": [True],
     })
-    assert df_gold.equals(df)
+    assert df_silver.equals(df)
