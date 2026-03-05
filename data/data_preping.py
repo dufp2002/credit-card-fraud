@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 import pandas as pd
 
@@ -56,30 +57,26 @@ def change_class_to_bool(df: pd.DataFrame) -> pd.DataFrame:
     input: dataframe were class is or isn't boolean
     output: dataframe were class is boolean
     """
-    mapped = (
-        df["Class"].astype(str).str.strip("'\" ").map({"0": False, "1": True})
-    )
-    if mapped.isna().any():
-        bad = df.loc[mapped.isna(), "Class"].unique()
-        raise ValueError(f"Unexpected Class values: {bad}")
+    mapped = df["Class"].astype(str).str.strip("'\" ").map({"0": False, "1": True})
     df["Class"] = mapped
 
     return df
 
 
-def cast_v_columns_to_float32(df: pd.DataFrame) -> pd.DataFrame:
+def cast_v_columns_to_Float32(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Cast all columns starting with 'V' (e.g., V1, V2, ...) to float32.
+    Cast all columns starting with 'V' (e.g., V1, V2, ...) to pandas Float32.
+    Non-numeric values are coerced to null.
     """
     v_cols = [col for col in df.columns if isinstance(col, str) and col.startswith("V")]
     if not v_cols:
         return df
 
-    df[v_cols] = df[v_cols].astype("float32")
+    df[v_cols] = df[v_cols].apply(pd.to_numeric, errors="coerce").astype("Float32")
     return df
 
 
-def cast_time_to_int(df: pd.DataFrame) -> pd.DataFrame:
+def cast_time_to_Int(df: pd.DataFrame) -> pd.DataFrame:
     """
     Cast the 'Time' column to int and cap values at max_time.
     The df shouldn't have nulls in it at this point.
@@ -88,11 +85,35 @@ def cast_time_to_int(df: pd.DataFrame) -> pd.DataFrame:
         raise KeyError("Column 'Time' not found in DataFrame.")
 
     time_values = pd.to_numeric(df["Time"], errors="coerce")
-    if time_values.isna().any():
-        raise ValueError("Column 'Time' contains non-numeric values.")
+    # if time_values.isna().any():
+    #     raise ValueError("Column 'Time' contains non-numeric values.")
 
-    df["Time"] = time_values.astype("int64")
+    df["Time"] = time_values.apply(pd.to_numeric, errors="coerce").astype("Int64")
     return df
+
+
+def remove_extra_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Keep only Time, Class, and columns matching V<digits> (e.g., V1, V12).
+    Drop all other columns.
+    """
+    rename_map = {
+        col: f"V{col[1:]}"
+        for col in df.columns
+        if isinstance(col, str) and col.startswith("v")
+    }
+    if rename_map:
+        df = df.rename(columns=rename_map)
+
+    v_col_pattern = re.compile(r"^V\d+$")
+    keep_cols = []
+    for col in df.columns:
+        if not isinstance(col, str):
+            continue
+        col_lower = col.lower()
+        if col_lower in {"time", "class", 'amount'} or v_col_pattern.match(col):
+            keep_cols.append(col)
+    return df[keep_cols].copy()
 
 
 def save_df(df: pd.DataFrame, path: str) -> None:
@@ -128,13 +149,21 @@ def save_df(df: pd.DataFrame, path: str) -> None:
         )
 
 
-if __name__ == "__main__":
-    path = 'archive/data/creditcard_csv.csv'
+def raw_data_to_gold(path: str) -> None:
+    """
+    Uses remove_extra_columns first since to remove it first tries to
+    rename columns.
+    """
     df = load_to_df(path)
-    df = drop_rows_with_nulls(df)
-    df = cast_time_to_int(df)
-    df = cast_v_columns_to_float32(df)
+    df = remove_extra_columns(df)
+    df = cast_time_to_Int(df)
+    df = cast_v_columns_to_Float32(df)
     df = change_class_to_bool(df)
     source_path = Path(path)
     output_path = source_path.with_name(f"{source_path.stem}_gold{source_path.suffix}")
-    save_df(df, 'archive/data/creditcard_csv_gold.csv')
+    save_df(df, output_path)
+
+
+if __name__ == "__main__":
+    path = 'archive/data/creditcard_csv.csv'
+    raw_data_to_gold(path)
