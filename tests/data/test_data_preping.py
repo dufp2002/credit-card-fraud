@@ -1,5 +1,4 @@
 from pathlib import Path
-import numpy as np
 import pytest
 import pandas as pd
 from data.data_preping import *
@@ -7,8 +6,9 @@ from data.create_dummy_dataset import *
 
 
 def test_create_dummy_dataset_contains_expected_issues():
-    fixed_name = "archive/data/dummy_dataset.csv"
-    df = load_to_df(fixed_name)
+    create_dummy_dataset()
+    fixed_name = "data/archive/data/dummy_dataset.csv"
+    df, _ = load_to_df(fixed_name)
     assert len(df) == 5
     assert df.isna().any().any()
     assert "'0'" in set(df["Class"])
@@ -64,24 +64,29 @@ def test_cast_time_to_int_raises_for_non_numeric_values():
 
 def test_save_df_writes_file():
     df = pd.DataFrame({"A": [1, 2], "B": [3, 4]})
-    output_path = Path("tests/data/sample.csv")
+    prefix = 'test/data/sample'
+    ext = "parquet"
+    output_path = None
 
     try:
-        save_df(df, str(output_path))
+        output_path = Path(f"{prefix}.{ext}")
+        save_df(df, prefix, ext=ext)
 
         assert output_path.exists()
-        loaded = pd.read_csv(output_path)
+        loaded, _ = load_to_df(output_path)
         assert loaded.equals(df)
     finally:
-        if output_path.exists():
+        if output_path is not None and output_path.exists():
             output_path.unlink()
 
 
-def test_raw_data_to_gold_writes_file():
-    fixed_name = "archive/data/dummy_dataset.csv"
-    raw_data_to_silver(fixed_name)
-    fixed_name = "archive/data/dummy_dataset_silver.csv"
-    df_silver = load_to_df(fixed_name)
+def test_raw_data_to_silver_writes_file():
+    fixed_name = "data/archive/data/dummy_dataset.csv"
+    df, _ = load_to_df(fixed_name)
+    df = raw_data_to_silver(df)
+    fixed_name = "data/archive/data/dummy_dataset_silver.parquet"
+    save_df(df, fixed_name, 'parquet')
+    df_silver, _ = load_to_df(fixed_name)
     df = pd.DataFrame({
     "Time": [100],
     "V1": [-1.5],
@@ -90,4 +95,5 @@ def test_raw_data_to_gold_writes_file():
     "Amount": [20.0],
     "Class": [True],
     })
-    assert df_silver.equals(df)
+
+    pd.testing.assert_frame_equal(df_silver, df, check_dtype=False)

@@ -17,6 +17,7 @@ def create_dummy_dataset() -> None:
     - Non V name column
     """
     fixed_name = "archive/data/dummy_dataset.csv"
+    ext = "csv"
     df = pd.DataFrame(
         {
             "Time": ["0", "100", "175001", "bad_time", "250"],
@@ -28,7 +29,7 @@ def create_dummy_dataset() -> None:
             "Class": ["'0'", "'1'", "2", "'1'", "'0'"],
         }
     )
-    save_df(df, fixed_name)
+    save_df(df, fixed_name, ext=ext)
 
 
 def delete_dummy_dataset() -> bool:

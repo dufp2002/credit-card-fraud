@@ -3,13 +3,46 @@ import re
 
 import pandas as pd
 
-def load_to_df(path: str) -> pd.DataFrame:
+def _resolve_input_path(path: str | Path) -> Path:
+    """
+    Resolve input path regardless of current working directory.
+    - If absolute, use as-is.
+    - If relative, resolve from project root.
+    """
+    candidate = Path(path)
+    if candidate.is_absolute():
+        return candidate
+
+    project_root = Path(__file__).resolve().parent.parent
+    resolved = project_root / candidate
+    if resolved.exists():
+        return resolved
+
+    # Fallback: when only a filename is provided, search the project tree.
+    matches = sorted(
+        p for p in project_root.rglob(candidate.name) if p.is_file()
+    )
+    if len(matches) == 1:
+        return matches[0]
+    if len(matches) > 1:
+        raise FileNotFoundError(
+            f"Ambiguous filename '{candidate.name}'. Matches: "
+            + ", ".join(str(p) for p in matches)
+        )
+
+    raise FileNotFoundError(f"Input file not found: {path}")
+
+def load_to_df(path: str | Path) -> tuple[pd.DataFrame, Path]:
     """
     Load a single file path into a pandas DataFrame.
 
     Supported formats: csv, json, parquet, xls/xlsx, feather, pickle, tsv, txt.
     """
-    ext = path.rsplit(".", 1)[-1].lower() if "." in path else ""
+    resolved_path = _resolve_input_path(path)
+    if not resolved_path.exists():
+        raise FileNotFoundError(f"Input file not found: {resolved_path}")
+
+    ext = resolved_path.suffix.lower().lstrip(".")
 
     readers = {
         "csv": pd.read_csv,
@@ -25,7 +58,7 @@ def load_to_df(path: str) -> pd.DataFrame:
     }
 
     if ext in readers:
-        return readers[ext](path)
+        return readers[ext](resolved_path), resolved_path
 
     raise ValueError(
         f"Unsupported file format: .{ext}. "
@@ -121,55 +154,53 @@ def remove_extra_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df[keep_cols].copy()
 
 
-def save_df(df: pd.DataFrame, path: str) -> None:
+def save_df(df: pd.DataFrame, path: str | Path, ext: str | None = 'parquet') -> None:
     """
     Save a DataFrame to disk based on file extension.
 
     Supported formats: csv, json, parquet, xls/xlsx, feather, pkl, pickle, tsv, txt.
     """
-    output_path = Path(path)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    ext = output_path.suffix.lower().lstrip(".")
+    path_obj = path if isinstance(path, Path) else Path(path)
+    path_ext = path_obj.suffix.lstrip(".").lower()
+    final_ext = ext.lstrip(".").lower() if ext is not None else path_ext
+    if not final_ext:
+        raise ValueError("File extension is required in path or ext argument.")
 
-    if ext == "csv":
-        df.to_csv(output_path, index=False)
-    elif ext == "json":
-        df.to_json(output_path, orient="records")
-    elif ext == "parquet":
+    output_path = path_obj.with_suffix(f".{final_ext}")
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if final_ext == "parquet":
         df.to_parquet(output_path, index=False)
-    elif ext in {"xls", "xlsx"}:
+    elif final_ext == "csv":
+        df.to_csv(output_path, index=False)
+    elif final_ext == "json":
+        df.to_json(output_path, orient="records")
+    elif final_ext in {"xls", "xlsx"}:
         df.to_excel(output_path, index=False)
-    elif ext == "feather":
+    elif final_ext == "feather":
         df.to_feather(output_path)
-    elif ext in {"pkl", "pickle"}:
+    elif final_ext in {"pkl", "pickle"}:
         df.to_pickle(output_path)
-    elif ext == "tsv":
+    elif final_ext == "tsv":
         df.to_csv(output_path, sep="\t", index=False)
-    elif ext == "txt":
+    elif final_ext == "txt":
         df.to_csv(output_path, sep="\t", index=False)
     else:
         raise ValueError(
-            f"Unsupported file format: .{ext}. "
+            f"Unsupported file format: .{final_ext}. "
             "Use one of: csv, json, parquet, xls, xlsx, feather, pkl, pickle, tsv, txt."
         )
 
 
-def raw_data_to_silver(path: str) -> None:
+def raw_data_to_silver(df: pd.DataFrame) -> pd.DataFrame:
     """
     Uses remove_extra_columns first since to remove it first tries to
     rename columns.
     """
-    df = load_to_df(path)
     df = remove_extra_columns(df)
     df = cast_time_to_Int(df)
     df = cast_v_columns_to_Float32(df)
     df = change_class_to_bool(df)
     df = drop_rows_with_nulls(df)
-    source_path = Path(path)
-    output_path = source_path.with_name(f"{source_path.stem}_silver{source_path.suffix}")
-    save_df(df, output_path)
 
-
-if __name__ == "__main__":
-    path = 'archive/data/creditcard_csv.csv'
-    raw_data_to_silver(path)
+    return df
